@@ -1,0 +1,161 @@
+Mi piace come progetto perché è utile e abbastanza ambizioso da imparare molte tecnologie senza diventare ingestibile.
+
+Nome del progetto
+
+Per ora lo chiamerei WiRouter (il nome si può cambiare in seguito).
+
+Obiettivo
+
+Creare un'applicazione Windows che trasformi un PC in un router Wi-Fi intelligente.
+
+Non sarà semplicemente un pulsante che attiva l'Hotspot di Windows, ma un vero pannello di gestione con funzionalità avanzate.
+
+Stack tecnologico
+
+Backend
+
+Go (ultima versione stabile)
+Accesso alle API Windows
+Goroutine per monitoraggio in tempo reale
+API REST locale (opzionale)
+
+Frontend
+
+Wails (Go + HTML/CSS/JavaScript) per un'interfaccia moderna
+oppure
+Fyne per una GUI completamente in Go.
+
+Io propendo per Wails: offre un aspetto più moderno e una migliore esperienza utente.
+
+Funzionalità principali (MVP)
+Gestione hotspot
+Attiva/disattiva hotspot
+Nome rete (SSID)
+Password personalizzata
+Visualizzazione dello stato
+Condivisione Internet
+Condivisione da Ethernet → Wi-Fi
+Condivisione da Wi-Fi → Wi-Fi (quando l'hardware lo consente)
+Selezione automatica della connessione da condividere
+Monitoraggio client
+Elenco dispositivi collegati
+Nome host (quando disponibile)
+Indirizzo IP
+Indirizzo MAC
+Ora di connessione
+Potenza del segnale (se disponibile)
+Monitoraggio traffico
+Upload totale
+Download totale
+Velocità in tempo reale
+Grafici di utilizzo
+Funzioni avanzate (v2)
+QR Code per collegarsi alla rete
+Blacklist e whitelist di dispositivi
+Blocco con un clic
+Limite di banda per client (se tecnicamente realizzabile)
+Avvio automatico con Windows
+Avvio automatico dell'hotspot
+Notifiche quando si collega un nuovo dispositivo
+Registro delle connessioni
+Funzioni "Pro"
+Portale web locale per il controllo
+API REST
+Supporto multi-lingua
+Temi chiaro/scuro
+Aggiornamenti automatici
+Plugin
+Architettura del progetto
+WiRouter
+│
+├── cmd/
+│   └── wirouter/
+│
+├── internal/
+│   ├── hotspot/
+│   ├── network/
+│   ├── clients/
+│   ├── monitor/
+│   ├── windows/
+│   ├── qr/
+│   ├── firewall/
+│   ├── settings/
+│   └── api/
+│
+├── frontend/
+│
+├── assets/
+│
+└── main.go
+Interfaccia
+
+Immagino una dashboard come questa:
+
+┌────────────────────────────────────────────┐
+│              WiRouter                      │
+├────────────────────────────────────────────┤
+│                                            │
+│ Hotspot          ● ATTIVO                  │
+│                                            │
+│ SSID             Casa                      │
+│ Password         ********                  │
+│                                            │
+│ Condivisione     Ethernet                  │
+│                                            │
+│ Client           5                         │
+│                                            │
+│ Upload           32 Mbps                   │
+│ Download         180 Mbps                  │
+│                                            │
+│ [ Avvia ]   [ Arresta ]                    │
+│                                            │
+└────────────────────────────────────────────┘
+Schermata Client
+Nome         IP              MAC             Stato
+
+iPhone       192.168.137.2   XX:XX:XX       Online
+TV           192.168.137.3   XX:XX:XX       Online
+Laptop       192.168.137.4   XX:XX:XX       Online
+
+Cliccando su un dispositivo si potrebbero visualizzare:
+
+traffico generato;
+tempo di connessione;
+produttore della scheda di rete (ricavato dal MAC);
+pulsante "Blocca";
+pulsante "Disconnetti" (nei limiti di ciò che Windows permette).
+Roadmap
+
+Fase 1 – Base
+
+Creazione del progetto in Go.
+Rilevamento delle interfacce di rete.
+Attivazione e disattivazione dell'hotspot.
+Configurazione di SSID e password.
+Gestione della condivisione della connessione (ICS).
+
+Fase 2 – Monitoraggio
+
+Elenco dei client.
+Statistiche di rete.
+Dashboard con aggiornamento in tempo reale.
+
+Fase 3 – Funzioni avanzate
+
+QR Code.
+Notifiche.
+Impostazioni persistenti.
+Avvio automatico.
+
+Fase 4 – Versione completa
+
+API REST.
+Interfaccia web.
+Temi.
+Sistema di aggiornamento.
+Installatore.
+Un aspetto tecnico importante
+
+La sfida principale non sarà Go, ma l'integrazione con Windows. Le API per gestire hotspot e condivisione della connessione sono meno moderne rispetto ad altre parti del sistema e richiedono di lavorare con COM, servizi di Windows e privilegi amministrativi. Una volta realizzato questo livello di integrazione, il resto (GUI, monitoraggio, impostazioni e statistiche) sarà relativamente lineare.
+
+Penso che questo possa diventare un progetto open source interessante: una sorta di alternativa moderna e gratuita al Mobile Hotspot di Windows, con molte più funzionalità e un'interfaccia curata.
