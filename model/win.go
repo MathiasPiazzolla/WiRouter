@@ -107,6 +107,7 @@ func ListWindowsAdapters() ([]AdapterWin, error) {
 		)
 
 		result = append(result, AdapterWin{
+			InterfaceID: current.IfIndex,
 			Name:        name,
 			Description: description,
 			MAC:         formatMAC(current.PhysicalAddress, current.PhysicalAddressLength),

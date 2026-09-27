@@ -10,6 +10,7 @@ type Adapter struct {
 }
 
 type AdapterWin struct {
+	InterfaceID uint32
 	Name        string
 	Description string
 	MAC         string

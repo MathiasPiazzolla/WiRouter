@@ -10,7 +10,7 @@ import (
 
 func main() {
 	fmt.Println(windows.ComputerName())
-	fmt.Print(model.GetAllAdapters())
+	//fmt.Print(model.GetAllAdapters())
 	//fmt.Print(net.Interfaces())
 	//fmt.Print(windows.GetAdaptersAddresses())
 	list, err := model.ListWindowsAdapters()
@@ -26,6 +26,7 @@ func main() {
 		fmt.Println("Descrizione:", a.Description)
 		fmt.Println("MAC:", a.MAC)
 		fmt.Println("Tipo:", a.Type)
+		fmt.Println("InterfaceID:", a.InterfaceID)
 
 	}
 }
