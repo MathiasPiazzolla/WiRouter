@@ -58,13 +58,12 @@ Dettagli: vedi [ROADMAP_CLI_DEMO.md](ROADMAP_CLI_DEMO.md)
 - [ ] Implementare `GetHotspotStatus()` 
 - [ ] Implementare `ChangeSSID(newSSID)`
 - [ ] Implementare `ChangePassword(newPassword)`
-- [ ] Interfacciarsi con Windows Hotspot API
+- [x] Interfacciarsi con l'Hotspot di Windows (WinRT `NetworkOperatorTetheringManager` via PowerShell)
 
-### 2.3 Internet Connection Sharing (ICS)
-- [ ] Implementare `ShareConnection(source, destination)` 
-- [ ] Configurare ICS via COM (Ethernet → Wi-Fi)
-- [ ] Configurare ICS (Wi-Fi → Wi-Fi)
-- [ ] Rilevare la connessione Internet attiva
+### 2.3 Condivisione Internet
+La condivisione è gestita da `NetworkOperatorTetheringManager` a partire dal profilo di connessione scelto.
+- [x] Rilevare le connessioni Internet attive
+- [ ] Wi-Fi → Wi-Fi (se supportato dall'hardware)
 - [ ] Gestire il cambio dinamico della rete condivisa
 
 ### 2.4 Monitoraggio Client
@@ -78,7 +77,7 @@ Dettagli: vedi [ROADMAP_CLI_DEMO.md](ROADMAP_CLI_DEMO.md)
 - [ ] Tracciare upload/download totale
 - [ ] Calcolare velocità in tempo reale
 - [ ] Monitoraggio per singolo dispositivo
-- [ ] Utilizzare netsh o API Windows per statistiche
+- [ ] Utilizzare le API Windows per statistiche
 
 ---
 
@@ -145,7 +144,7 @@ Dettagli: vedi [ROADMAP_CLI_DEMO.md](ROADMAP_CLI_DEMO.md)
 ## 🔒 Fase 5: Security & Robustness
 
 ### 5.1 Sicurezza
-- [ ] Richiedere permessi amministratore
+- [x] Funzionamento con utente standard (nessuna elevazione richiesta)
 - [ ] Validare input (SSID, password)
 - [ ] Implementare rate limiting
 - [ ] Proteggere API REST
@@ -197,7 +196,6 @@ Programma terminal standalone senza API/GUI:
 |------|--------|----------|
 | Fase 1: Struttura Base | 1-2 giorni | 🔴 CRITICA |
 | Fase 2: Core Hotspot Logic | 3-4 giorni | 🔴 CRITICA |
-| Fase 3: ICS & Routing | 2-3 giorni | 🔴 CRITICA |
 | Fase 4: Terminal Interattiva | 1-2 giorni | 🟠 ALTA |
 | Fase 5: Testing & Bug Fix | 1 giorno | 🟠 ALTA |
 | Fase 6: Packaging | 1 giorno | 🟡 MEDIA |
@@ -233,24 +231,22 @@ Aggiungere API REST, GUI Wails, e funzionalità avanzate:
 - `net/http` o `Gin` - HTTP server
 
 ### Considerazioni Windows
-- Richiedere privilegi amministratore
 - Testare con antivirus attivi
 - Compatibilità con diverse versioni di Windows
 - Interfaccia con Windows Hotspot Service
 
 ### Rischi Potenziali
 - Compatibilità hardware (non tutti i driver Wi-Fi supportano hotspot)
-- Permessi di amministratore richiesti
-- Instabilità dovuta a ICS
+- Policy aziendali che possono bloccare l'Hotspot di Windows
+- Dipendenza da Windows PowerShell 5.1 per l'accesso a WinRT
 - Interferenza con software antivirus/firewall
 
 ### Prossimi Passi Immediati (DEMO Interattiva)
 1. ✅ Organizzazione progetto completata
-2. → Strutturare `cmd/wirouter/` e `internal/hotspot/`, `internal/network/`
-3. → Implementare `ListWiFiAdapters()` con filtro per tipo Wi-Fi
-4. → Implementare hotspot start/stop via `netsh wlan hostednetwork`
-5. → Implementare ICS routing via netsh
-6. → Creare programma interattivo in `cmd/wirouter/main.go`
-7. → Build e test su Windows
+2. ✅ Struttura `cmd/wirouter/` e `internal/hotspot/`
+3. ✅ Elenco connessioni Internet condivisibili
+4. ✅ Hotspot start/stop/status via WinRT (PowerShell)
+5. ✅ Programma interattivo in `cmd/wirouter/main.go`
+6. → Test dell'avvio reale su Windows (policy permettendo)
 
 

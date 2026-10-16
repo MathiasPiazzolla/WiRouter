@@ -1,128 +1,90 @@
 package model
 
 import (
+	"errors"
 	"fmt"
 	"unsafe"
 
 	"golang.org/x/sys/windows"
 )
 
-var (
-	iphlpapi = windows.NewLazySystemDLL("iphlpapi.dll")
+const maxAdapterQueryAttempts = 3
 
-	getAdaptersAddresses = iphlpapi.NewProc("GetAdaptersAddresses")
-)
-
-type ipAdapterAddresses struct {
-	Length  uint32
-	IfIndex uint32
-
-	Next uintptr
-
-	AdapterName uintptr
-
-	FirstUnicastAddress   uintptr
-	FirstAnycastAddress   uintptr
-	FirstMulticastAddress uintptr
-	FirstDnsServerAddress uintptr
-
-	DnsSuffix    uintptr
-	Description  uintptr
-	FriendlyName uintptr
-
-	PhysicalAddress       [8]byte
-	PhysicalAddressLength uint32
-
-	Flags uint32
-
-	Mtu    uint32
-	IfType uint32
-}
-
-func interfaceType(t uint32) string {
-
-	switch t {
-
-	case 6:
+func interfaceType(value uint32) string {
+	switch value {
+	case windows.IF_TYPE_ETHERNET_CSMACD:
 		return "Ethernet"
-
-	case 71:
+	case windows.IF_TYPE_IEEE80211:
 		return "Wi-Fi"
-
-	case 24:
+	case windows.IF_TYPE_SOFTWARE_LOOPBACK:
 		return "Loopback"
-
 	default:
-		return fmt.Sprintf("Unknown (%d)", t)
+		return fmt.Sprintf("Unknown (%d)", value)
 	}
 }
 
-func formatMAC(mac [8]byte, length uint32) string {
-
-	result := ""
-
-	for i := uint32(0); i < length; i++ {
-
-		if i > 0 {
-			result += ":"
-		}
-
-		result += fmt.Sprintf("%02X", mac[i])
+func formatMAC(address []byte) string {
+	if len(address) == 0 {
+		return ""
 	}
 
+	result := fmt.Sprintf("%02X", address[0])
+	for _, value := range address[1:] {
+		result += fmt.Sprintf(":%02X", value)
+	}
 	return result
 }
 
 func ListWindowsAdapters() ([]AdapterWin, error) {
-
 	var size uint32
-
-	// prima chiamata per sapere la dimensione
-	getAdaptersAddresses.Call(0, 0, 0, 0, uintptr(unsafe.Pointer(&size)))
-
-	buffer := make([]byte, size)
-
-	ret, _, err := getAdaptersAddresses.Call(0, 0, 0, uintptr(unsafe.Pointer(&buffer[0])), uintptr(unsafe.Pointer(&size)))
-
-	if ret != 0 {
-		return nil, err
+	var flags uint32
+	err := windows.GetAdaptersAddresses(windows.AF_UNSPEC, flags, 0, nil, &size)
+	if !errors.Is(err, windows.ERROR_BUFFER_OVERFLOW) {
+		if err == nil {
+			return nil, errors.New("GetAdaptersAddresses non ha restituito la dimensione richiesta")
+		}
+		return nil, fmt.Errorf("lettura dimensione adapter: %w", err)
 	}
 
-	first := (*ipAdapterAddresses)(
-		unsafe.Pointer(&buffer[0]),
-	)
-
-	var result []AdapterWin
-
-	current := first
-
-	for current != nil {
-
-		name := windows.UTF16PtrToString(
-			(*uint16)(unsafe.Pointer(current.FriendlyName)),
-		)
-
-		description := windows.UTF16PtrToString(
-			(*uint16)(unsafe.Pointer(current.Description)),
-		)
-
-		result = append(result, AdapterWin{
-			InterfaceID: current.IfIndex,
-			Name:        name,
-			Description: description,
-			MAC:         formatMAC(current.PhysicalAddress, current.PhysicalAddressLength),
-			Type:        interfaceType(current.IfType),
-		})
-
-		if current.Next == 0 {
-			break
+	for attempt := 0; attempt < maxAdapterQueryAttempts; attempt++ {
+		if size == 0 {
+			return nil, errors.New("dimensione buffer adapter non valida")
 		}
 
-		current = (*ipAdapterAddresses)(
-			unsafe.Pointer(current.Next),
-		)
+		buffer := make([]byte, size)
+		first := (*windows.IpAdapterAddresses)(unsafe.Pointer(&buffer[0]))
+		err = windows.GetAdaptersAddresses(windows.AF_UNSPEC, flags, 0, first, &size)
+		if errors.Is(err, windows.ERROR_BUFFER_OVERFLOW) {
+			continue
+		}
+		if err != nil {
+			return nil, fmt.Errorf("lettura adapter: %w", err)
+		}
+
+		var adapters []AdapterWin
+		for current := first; current != nil; current = current.Next {
+			physicalAddressLength := int(current.PhysicalAddressLength)
+			if physicalAddressLength > len(current.PhysicalAddress) {
+				physicalAddressLength = len(current.PhysicalAddress)
+			}
+
+			adapters = append(adapters, AdapterWin{
+				InterfaceID: current.IfIndex,
+				Name:        utf16String(current.FriendlyName),
+				Description: utf16String(current.Description),
+				MAC:         formatMAC(current.PhysicalAddress[:physicalAddressLength]),
+				Type:        interfaceType(current.IfType),
+			})
+		}
+		return adapters, nil
 	}
 
-	return result, nil
+	return nil, errors.New("la lista adapter è cambiata durante la lettura")
+}
 
+func utf16String(value *uint16) string {
+	if value == nil {
+		return ""
+	}
+	return windows.UTF16PtrToString(value)
 }

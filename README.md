@@ -29,7 +29,7 @@ L'obiettivo non è semplicemente avviare l'Hotspot di Windows, ma offrire un pan
 
 - Go
 - Windows API
-- COM (Internet Connection Sharing)
+- WinRT (`NetworkOperatorTetheringManager`, via PowerShell)
 - Goroutine
 - JSON
 - REST API (opzionale)
@@ -263,7 +263,7 @@ TV            192.168.137.4   XX:XX:XX           Online
 - [ ] Disattivazione hotspot
 - [ ] Gestione SSID
 - [ ] Gestione password
-- [ ] Configurazione Internet Connection Sharing (ICS)
+- [ ] Selezione della connessione Internet condivisa
 
 ---
 
@@ -305,7 +305,7 @@ TV            192.168.137.4   XX:XX:XX           Online
            │    WiRouter    │
            │                │
            │ Hotspot        │
-           │ ICS            │
+           │ Condivisione   │
            │ Monitor        │
            │ Dashboard      │
            │ API            │
@@ -336,14 +336,32 @@ TV            192.168.137.4   XX:XX:XX           Online
 
 ---
 
-# 🔒 Permessi Richiesti
+# 🔒 Permessi
 
-L'applicazione richiederà privilegi di amministratore per:
+L'hotspot viene gestito tramite l'API WinRT `NetworkOperatorTetheringManager`
+(la stessa delle Impostazioni di Windows): **non servono privilegi di
+amministratore**. Policy aziendali o di sistema possono comunque limitare
+l'Hotspot di Windows.
 
-- Gestione hotspot
-- Configurazione ICS
-- Accesso alle API di rete
-- Modifica firewall (eventuale)
+---
+
+# 🖥️ Demo terminale
+
+La demo corrente permette di:
+
+- elencare e selezionare la connessione Internet da condividere;
+- configurare SSID e password;
+- avviare l'hotspot Windows;
+- arrestare l'hotspot con `CTRL+C`.
+
+Da PowerShell (utente standard):
+
+```powershell
+go build -o wirouter.exe ./cmd/wirouter
+.\wirouter.exe
+```
+
+Requisiti: Windows 10/11 con Windows PowerShell 5.1 e una connessione Internet attiva.
 
 ---
 
