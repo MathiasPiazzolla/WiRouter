@@ -381,6 +381,7 @@ go build -ldflags "-H=windowsgui" -o wirouter-autostart.exe ./cmd/wirouter
   disponibile, il programma attende fino a 5 minuti. Gli errori compaiono in una finestra.
 - Al logout o alla chiusura l'hotspot viene fermato.
 - Per cambiare dati, rieseguire `--install-autostart`: sovrascrive l'attività.
+- Per disattivare l'avvio automatico, vedi [DISATTIVARE_AVVIO_AUTOMATICO.md](docs/DISATTIVARE_AVVIO_AUTOMATICO.md).
 - **Attenzione**: la password è salvata in chiaro negli argomenti dell'attività
   e nella riga di comando del processo. Chi ha accesso al PC può leggerla.
 
