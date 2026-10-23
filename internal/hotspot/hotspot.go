@@ -7,6 +7,9 @@ import (
 	"os/exec"
 	"strconv"
 	"strings"
+	"syscall"
+
+	"golang.org/x/sys/windows"
 
 	"github.com/MathiasPiazzolla/WiRouter/model"
 )
@@ -20,6 +23,11 @@ const (
 var executeCommand = func(env []string, name string, args ...string) ([]byte, error) {
 	command := exec.Command(name, args...)
 	command.Env = append(os.Environ(), env...)
+	// Nessuna finestra di console: il programma avviato al login può non averne una.
+	command.SysProcAttr = &syscall.SysProcAttr{
+		HideWindow:    true,
+		CreationFlags: windows.CREATE_NO_WINDOW,
+	}
 	return command.CombinedOutput()
 }
 

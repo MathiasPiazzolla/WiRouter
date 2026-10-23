@@ -363,6 +363,27 @@ go build -o wirouter.exe ./cmd/wirouter
 
 Requisiti: Windows 10/11 con Windows PowerShell 5.1 e una connessione Internet attiva.
 
+## Avvio automatico al login
+
+Il programma può partire da solo all'accesso dell'utente tramite un'attività
+dell'Utilità di pianificazione (nessun privilegio di amministratore).
+
+```powershell
+go build -o wirouter.exe ./cmd/wirouter
+go build -ldflags "-H=windowsgui" -o wirouter-autostart.exe ./cmd/wirouter
+.\wirouter.exe --install-autostart     # chiede connessione, SSID e password
+.\wirouter.exe --uninstall-autostart   # rimuove l'attività
+```
+
+- `wirouter-autostart.exe` è la versione senza console usata dall'attività: deve stare
+  nella stessa cartella di `wirouter.exe` al momento dell'installazione.
+- All'accesso l'hotspot parte dopo 30 secondi. Se la connessione non è ancora
+  disponibile, il programma attende fino a 5 minuti. Gli errori compaiono in una finestra.
+- Al logout o alla chiusura l'hotspot viene fermato.
+- Per cambiare dati, rieseguire `--install-autostart`: sovrascrive l'attività.
+- **Attenzione**: la password è salvata in chiaro negli argomenti dell'attività
+  e nella riga di comando del processo. Chi ha accesso al PC può leggerla.
+
 ---
 
 # 🎯 Obiettivo Finale

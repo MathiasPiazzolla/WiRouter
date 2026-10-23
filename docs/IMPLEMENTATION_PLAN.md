@@ -249,4 +249,37 @@ Aggiungere API REST, GUI Wails, e funzionalità avanzate:
 5. ✅ Programma interattivo in `cmd/wirouter/main.go`
 6. → Test dell'avvio reale su Windows (policy permettendo)
 
+---
+
+## 🚀 Fase 4: Avvio automatico al login
+
+**Stato**: in corso. Le parti sotto sono implementate e testate, ma non ancora collegate a `main.go`.
+
+**Decisioni confermate**
+- Avvio tramite Utilità di pianificazione, attività "All'accesso" con ritardo di 30 s, riavvio fino a 3 volte in caso di errore, nessun limite di durata
+- Password in chiaro come argomento dell'attività pianificata (scelta 2). DPAPI non usato: `internal/secret` è escluso dalla policy aziendale. Rischio accettato: la password è leggibile nella definizione dell'attività e nella riga di comando del processo, da chi ha accesso al PC
+- Nessun file di configurazione: `--install-autostart` chiede i dati e crea l'attività con gli argomenti `--source`, `--ssid`, `--password`
+- All'accesso chiusura o logout: l'hotspot viene fermato
+- Due eseguibili: `wirouter.exe` con console (uso interattivo e installazione dell'avvio automatico) e `wirouter-autostart.exe` senza console (`-H=windowsgui`)
+- Errori all'avvio automatico mostrati con una finestra di Windows
+
+**Già implementato**
+- [x] Istanza unica con mutex `Local\WiRouter` (`internal/instance`), in modalità interattiva e automatica
+- [x] Finestra di errore di Windows (`internal/notify`), mostrata in modalità `--autostart`
+- [x] Generazione XML dell'attività in UTF-16 con BOM, con test (`internal/autostart`)
+- [x] Ciclo di avvio: attesa della fonte, riavvio se già acceso, tentativi di avvio, arresto allo stop (`internal/runner`, test con finto hotspot)
+- [x] Adattatore `hotspot.Controller` che collega `internal/hotspot` a `runner.Hotspot`
+- [x] `cmd/wirouter/main.go`: flag `--autostart`, `--install-autostart`, `--uninstall-autostart`, con test del round-trip degli argomenti
+- [x] Finestre PowerShell e `schtasks` nascoste (`HideWindow`, `CREATE_NO_WINDOW`)
+- [x] Build dei due eseguibili verificata (`wirouter.exe` e `wirouter-autostart.exe` con `-H=windowsgui`)
+
+**Da fare**
+- [ ] Verifica che `schtasks /create /xml` accetti il file generato
+- [ ] Creazione reale dell'attività sul PC, solo dopo la conferma finale
+- [ ] Test reali: login, logout con arresto dell'hotspot, riavvio dopo errore
+- [ ] Misurare il tempo che Windows concede al programma dopo il segnale di logout, per verificare che l'arresto dell'hotspot finisca in tempo
+- [ ] **In attesa di decisione**: fallback sul Wi-Fi quando la LAN non è disponibile. Da decidere il tempo di attesa della LAN prima del passaggio al Wi-Fi. Da verificare se la scheda Wi-Fi supporta la condivisione con hotspot: il test richiede il cavo di rete scollegato.
+- [ ] Aggiornare `docs/LOGICA_PROGRAMMA.md` con la sezione sull'avvio automatico
+
+
 
