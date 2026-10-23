@@ -1,3 +1,5 @@
+> **Trascrizione storica** di una conversazione iniziale. Non è più aggiornata: lo stato attuale è in [IMPLEMENTATION_PLAN.md](./IMPLEMENTATION_PLAN.md).
+
 Mi piace come progetto perché è utile e abbastanza ambizioso da imparare molte tecnologie senza diventare ingestibile.
 
 Nome del progetto

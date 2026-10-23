@@ -83,8 +83,7 @@ WiRouter
 
 - Avvio hotspot
 - Arresto hotspot
-- Cambio SSID
-- Cambio password
+- Cambio SSID e password (solo riavviando il programma o reinstallando l'avvio automatico, vedi [guida](docs/GUIDA_UTENTE.md))
 - Stato hotspot
 
 ---
@@ -250,20 +249,20 @@ TV            192.168.137.4   XX:XX:XX           Online
 
 ## Fase 1
 
-- [ ] Creazione progetto
+- [x] Creazione progetto
 - [ ] Setup Wails
 - [ ] Gestione configurazione
-- [ ] Individuazione schede di rete
+- [x] Individuazione schede di rete
 
 ---
 
 ## Fase 2
 
-- [ ] Attivazione hotspot
-- [ ] Disattivazione hotspot
-- [ ] Gestione SSID
-- [ ] Gestione password
-- [ ] Selezione della connessione Internet condivisa
+- [x] Attivazione hotspot
+- [x] Disattivazione hotspot
+- [ ] Gestione SSID (impostato solo all'avvio, non modificabile)
+- [ ] Gestione password (impostata solo all'avvio, non modificabile)
+- [x] Selezione della connessione Internet condivisa
 
 ---
 
@@ -354,6 +353,9 @@ La demo corrente permette di:
 - avviare l'hotspot Windows;
 - arrestare l'hotspot con `CTRL+C`.
 
+Il programma accetta anche tre opzioni per l'avvio automatico (vedi sotto):
+`--autostart`, `--install-autostart`, `--uninstall-autostart`.
+
 Da PowerShell (utente standard):
 
 ```powershell
@@ -362,6 +364,9 @@ go build -o wirouter.exe ./cmd/wirouter
 ```
 
 Requisiti: Windows 10/11 con Windows PowerShell 5.1 e una connessione Internet attiva.
+
+Per l'uso passo per passo, cambio di SSID o password e disattivazione, vedi la
+[guida d'uso](docs/GUIDA_UTENTE.md).
 
 ## Avvio automatico al login
 
@@ -379,7 +384,10 @@ go build -ldflags "-H=windowsgui" -o wirouter-autostart.exe ./cmd/wirouter
   nella stessa cartella di `wirouter.exe` al momento dell'installazione.
 - All'accesso l'hotspot parte dopo 30 secondi. Se la connessione non è ancora
   disponibile, il programma attende fino a 5 minuti. Gli errori compaiono in una finestra.
-- Al logout o alla chiusura l'hotspot viene fermato.
+- Al logout o allo spegnimento il programma dovrebbe fermare l'hotspot. Il comportamento
+  non è ancora verificato sul PC: non si sa quanto Windows lascia al processo per terminare.
+- Non c'è ancora un fallback sul Wi-Fi: se la connessione via cavo non è disponibile,
+  l'hotspot non parte.
 - Per cambiare dati, rieseguire `--install-autostart`: sovrascrive l'attività.
 - Per disattivare l'avvio automatico, vedi [DISATTIVARE_AVVIO_AUTOMATICO.md](docs/DISATTIVARE_AVVIO_AUTOMATICO.md).
 - **Attenzione**: la password è salvata in chiaro negli argomenti dell'attività

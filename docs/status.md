@@ -1,5 +1,7 @@
 # WiRouter - Progetto Go Windows Hotspot
 
+> **Documento storico** (luglio 2026). Non è più aggiornato. Lo stato attuale è in [IMPLEMENTATION_PLAN.md](./IMPLEMENTATION_PLAN.md) e la logica del programma in [LOGICA_PROGRAMMA.md](./LOGICA_PROGRAMMA.md).
+
 ## Obiettivo
 
 Creare un programma in Go per Windows che permetta di:

@@ -30,13 +30,13 @@ Dettagli: vedi [ROADMAP_CLI_DEMO.md](ROADMAP_CLI_DEMO.md)
 - [x] Configurare `go.mod`
 - [x] Creare `README.md`
 - [x] Organizzare documentazione in `docs/`
-- [ ] Creare cartella `cmd/wirouter/` per entry point principale
-- [ ] Creare cartella `internal/` per logica interna
+- [x] Creare cartella `cmd/wirouter/` per entry point principale
+- [x] Creare cartella `internal/` per logica interna
 - [ ] Aggiungere `.gitignore`
 
 ### 1.2 Modello Dati
 - [x] Definire struct `Adapter` e `AdapterWin`
-- [ ] Creare struct `Hotspot` (SSID, password, stato)
+- [x] Creare struct `Hotspot` (SSID, password, stato): `model.HotspotConfig` e `model.HotspotStatus`
 - [ ] Creare struct `NetworkDevice` (dispositivi collegati)
 - [ ] Creare struct `TrafficStats` (statistiche traffico)
 - [ ] Aggiungere enum per tipi di connessione
@@ -53,9 +53,9 @@ Dettagli: vedi [ROADMAP_CLI_DEMO.md](ROADMAP_CLI_DEMO.md)
 - [ ] Aggiungere error handling robusto
 
 ### 2.2 Hotspot Management
-- [ ] Implementare `StartHotspot(ssid, password, adapter)`
-- [ ] Implementare `StopHotspot()`
-- [ ] Implementare `GetHotspotStatus()` 
+- [x] Implementare `StartHotspot(config)`
+- [x] Implementare `StopHotspot(source)`
+- [x] Implementare `GetHotspotStatus(source)`
 - [ ] Implementare `ChangeSSID(newSSID)`
 - [ ] Implementare `ChangePassword(newPassword)`
 - [x] Interfacciarsi con l'Hotspot di Windows (WinRT `NetworkOperatorTetheringManager` via PowerShell)
@@ -145,7 +145,7 @@ La condivisione è gestita da `NetworkOperatorTetheringManager` a partire dal pr
 
 ### 5.1 Sicurezza
 - [x] Funzionamento con utente standard (nessuna elevazione richiesta)
-- [ ] Validare input (SSID, password)
+- [x] Validare input (SSID, password)
 - [ ] Implementare rate limiting
 - [ ] Proteggere API REST
 - [ ] Logging delle azioni
@@ -153,12 +153,12 @@ La condivisione è gestita da `NetworkOperatorTetheringManager` a partire dal pr
 ### 5.2 Gestione Errori
 - [ ] Catturare eccezioni Windows API
 - [ ] User-friendly error messages
-- [ ] Retry logic per operazioni fallite
+- [x] Retry logic per operazioni fallite (avvio automatico: 3 tentativi)
 - [ ] Log dettagliati per debugging
 
 ### 5.3 Testing
 - [ ] Unit test per modelli
-- [ ] Unit test per funzioni core
+- [x] Unit test per funzioni core (validazione, runner, parsing, argomenti dell'attività)
 - [ ] Integration test con Windows API
 - [ ] Test UI
 - [ ] Test stress/performance
@@ -247,13 +247,14 @@ Aggiungere API REST, GUI Wails, e funzionalità avanzate:
 3. ✅ Elenco connessioni Internet condivisibili
 4. ✅ Hotspot start/stop/status via WinRT (PowerShell)
 5. ✅ Programma interattivo in `cmd/wirouter/main.go`
-6. → Test dell'avvio reale su Windows (policy permettendo)
+6. ✅ Avvio reale su Windows: il programma parte senza errori con sorgente Ethernet. Da confermare: hotspot visibile e spegnimento
+7. → Test di login, logout e riavvio dopo errore (vedi Fase 4)
 
 ---
 
 ## 🚀 Fase 4: Avvio automatico al login
 
-**Stato**: in corso. Le parti sotto sono implementate e testate, ma non ancora collegate a `main.go`.
+**Stato**: in corso. Il codice è collegato a `main.go` e committato (`c8b9be5`). L'attività è creata sul PC e il primo test manuale è riuscito. Restano da verificare login, logout e riavvio dopo errore.
 
 **Decisioni confermate**
 - Avvio tramite Utilità di pianificazione, attività "All'accesso" con ritardo di 30 s, riavvio fino a 3 volte in caso di errore, nessun limite di durata
@@ -272,14 +273,21 @@ Aggiungere API REST, GUI Wails, e funzionalità avanzate:
 - [x] `cmd/wirouter/main.go`: flag `--autostart`, `--install-autostart`, `--uninstall-autostart`, con test del round-trip degli argomenti
 - [x] Finestre PowerShell e `schtasks` nascoste (`HideWindow`, `CREATE_NO_WINDOW`)
 - [x] Build dei due eseguibili verificata (`wirouter.exe` e `wirouter-autostart.exe` con `-H=windowsgui`)
+- [x] Verifica che `schtasks /create /xml` accetti il file generato
+- [x] Attività `WiRouter` creata sul PC con `--install-autostart`: stato Ready, trigger all'accesso, ritardo 30 s, utente `ad-ct011351`
+- [x] Test manuale con `schtasks /run`: processo `wirouter-autostart` in esecuzione, nessun errore
+- [x] Documentazione: [DISATTIVARE_AVVIO_AUTOMATICO.md](DISATTIVARE_AVVIO_AUTOMATICO.md) e sezione nel README
+- [x] [LOGICA_PROGRAMMA.md](LOGICA_PROGRAMMA.md) aggiornato con la modalità automatica
 
 **Da fare**
-- [ ] Verifica che `schtasks /create /xml` accetti il file generato
-- [ ] Creazione reale dell'attività sul PC, solo dopo la conferma finale
-- [ ] Test reali: login, logout con arresto dell'hotspot, riavvio dopo errore
+- [ ] Verificare che l'hotspot sia acceso dopo il test (non ancora confermato con un dispositivo o nelle Impostazioni)
+- [ ] Test di login reale (riavvio o logout e nuovo accesso): l'hotspot deve partire dopo circa 30 s
+- [ ] Test di logout: l'hotspot deve essere fermato
+- [ ] Test di riavvio dopo errore (3 tentativi)
+- [ ] Test con cavo Ethernet scollegato: attesa fino a 5 minuti, poi finestra di errore
 - [ ] Misurare il tempo che Windows concede al programma dopo il segnale di logout, per verificare che l'arresto dell'hotspot finisca in tempo
 - [ ] **In attesa di decisione**: fallback sul Wi-Fi quando la LAN non è disponibile. Da decidere il tempo di attesa della LAN prima del passaggio al Wi-Fi. Da verificare se la scheda Wi-Fi supporta la condivisione con hotspot: il test richiede il cavo di rete scollegato.
-- [ ] Aggiornare `docs/LOGICA_PROGRAMMA.md` con la sezione sull'avvio automatico
+- [ ] Disattivazione dell'avvio automatico documentata, ma non ancora provata sul PC
 
 
 

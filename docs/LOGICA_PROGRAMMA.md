@@ -21,6 +21,11 @@ Questo documento descrive il funzionamento interno di WiRouter: architettura, fl
 | API di dominio | [hotspot.go](../internal/hotspot/hotspot.go) | Validazione, costruzione dell'input, esecuzione degli script, parsing dell'output |
 | Ponte WinRT | [script.go](../internal/hotspot/script.go) | Script PowerShell che invoca WinRT |
 | Modello | [hotspot.go (model)](../model/hotspot.go) | `HotspotConfig` e `HotspotStatus` |
+| Runner | [runner.go](../internal/runner/runner.go) | Ciclo della modalità automatica: attesa della fonte, riavvio, tentativi, arresto |
+| Adattatore | [controller.go](../internal/hotspot/controller.go) | Collega le funzioni del package `hotspot` all'interfaccia `runner.Hotspot` |
+| Istanza unica | [instance_windows.go](../internal/instance/instance_windows.go) | Mutex `Local\WiRouter`: una sola istanza alla volta |
+| Notifiche | [notify_windows.go](../internal/notify/notify_windows.go) | Finestra di errore per il file senza console |
+| Attività | [task.go](../internal/autostart/task.go) | Creazione e rimozione dell'attività dell'Utilità di pianificazione |
 
 ```
 main.go
@@ -36,7 +41,7 @@ Una sessione completa avvia **tre processi PowerShell separati**. Ogni chiamata 
 
 ## 3. Flusso di esecuzione (`main.go`)
 
-1. `main` chiama `run(os.Stdin, os.Stdout)`. In caso di errore stampa su stderr ed esce con codice 1.
+1. `main` chiama `run(os.Stdin, os.Stdout)`. `run` acquisisce per prima cosa il mutex `Local\WiRouter`: un'istanza interattiva e una automatica non possono coesistere. In caso di errore il programma stampa su stderr ed esce con codice 1.
 2. `hotspot.ListSources()` restituisce i nomi dei profili di connessione con `InternetAccess`. Se la lista è vuota, `run` termina con errore.
 3. `readSource` chiede un numero, lo converte con `strconv.Atoi` e lo verifica nell'intervallo `[1, n]`. Riprova finché l'input non è valido.
 4. `readValidated` chiede SSID e password. Riceve il validatore come parametro (`func(string) error`) e segue lo stesso schema: errore → messaggio → nuovo prompt.
@@ -46,6 +51,23 @@ Una sessione completa avvia **tre processi PowerShell separati**. Ogni chiamata 
 8. `hotspot.StopHotspot(source)` spegne l'hotspot. `signal.Stop` è in `defer`, quindi resta attivo fino alla fine di `run`.
 
 **Lettura dell'input** (`readLine`): usa `bufio.Reader.ReadString('\n')` e poi `TrimSpace`. Se arriva EOF con stringa vuota restituisce `input terminato`. Se arriva EOF con dati parziali accetta il valore.
+
+---
+
+### 3.1 Modalità automatica (`--autostart`)
+
+È la modalità usata dall'attività pianificata. Non chiede nulla e non ha console: i dati arrivano dagli argomenti `--source`, `--ssid` e `--password`.
+
+1. `main` chiama `runAutostart`, che acquisisce il mutex e valida SSID e password.
+2. Il contesto viene annullato da CTRL+C, da `SIGTERM` (logout e arresto di Windows) o da un errore.
+3. `runner.Run` esegue, in ordine:
+   - `waitForSource`: controlla `ListSources` ogni 5 s, per al massimo 5 minuti;
+   - `Status`: se l'hotspot è già acceso lo ferma prima di riavviarlo (caso tipico dopo un riavvio che non ha chiuso il processo);
+   - `startWithRetries`: fino a 3 tentativi, con 10 s tra uno e l'altro. Se tutti falliscono, prova a fermare l'hotspot e restituisce l'errore;
+   - attesa del contesto, poi `Stop`.
+4. Un errore viene mostrato con una finestra di Windows. L'annullamento del contesto invece termina senza errore.
+
+Tempi e tentativi sono costanti in `main.go`. Il runner riceve un `Options` e un'interfaccia `Hotspot`, quindi i test usano un hotspot finto.
 
 ---
 
@@ -127,7 +149,7 @@ Note:
 
 - In `scriptStart` la configurazione deve essere applicata **prima** di `StartTetheringAsync`. Per questo le due chiamate sono in sequenza.
 - Il confronto `TetheringOperationalState -eq 'On'` mette a confronto un enum con una stringa. Funziona perché PowerShell converte la stringa nel tipo dell'enum.
-- `scriptStatus` esiste ma il CLI non lo chiama. Serve per diagnosi e test.
+- `scriptStatus` è usato dalla modalità automatica (`runner.Run`) per sapere se l'hotspot è già acceso. Il CLI interattivo non lo chiama.
 
 ### 5.5 Parsing dell'output (`parseStatus`)
 
@@ -155,6 +177,7 @@ Casi specifici:
 - **`IAsyncAction` fallita** (es. `ConfigureAccessPointAsync`): `Wait` lancia una `AggregateException`. Il messaggio è generico (tipicamente `One or more errors occurred.`), quindi poco informativo.
 - **Errori di validazione**: sono recuperabili. Il CLI ripropone il prompt.
 - **Errori di Windows o di PowerShell**: sono terminali. Il programma esce con codice 1.
+- **Modalità automatica**: l'errore finale viene mostrato in una finestra di Windows (`internal/notify`), perché `wirouter-autostart.exe` non ha console.
 
 ---
 
@@ -169,6 +192,8 @@ Questa è la parte più delicata del programma.
 | CTRL+C durante l'attesa | Nessun figlio PowerShell è in esecuzione. Go riceve il segnale e chiama `StopHotspot` |
 | CTRL+C durante `StopHotspot` | Vedi sotto |
 | Chiusura della finestra, `taskkill /F`, crash | Go non esegue lo stop. L'hotspot **resta attivo** |
+| Logout o arresto di Windows (modalità automatica) | Windows invia CTRL_LOGOFF o CTRL_SHUTDOWN, che Go riceve come `SIGTERM`. `runner.Run` esce dall'attesa e chiama `StopHotspot`. **Previsto, non ancora verificato**: non si sa quanto tempo Windows concede prima di terminare il processo |
+| `schtasks /end` o `Stop-Process` (modalità automatica) | Il processo termina senza eseguire lo stop: l'hotspot **resta attivo**. Va spento dalle Impostazioni |
 
 **Punto da verificare** (comportamento standard di Windows, non ancora testato): CTRL+C viene inviato a **tutti** i processi collegati alla stessa console, compreso `powershell.exe` se è in esecuzione. Quindi un CTRL+C durante `StartHotspot` o `StopHotspot` può terminare il figlio PowerShell. La chiamata restituisce errore e lo stato dell'hotspot può essere incerto. In quel caso va controllato in *Impostazioni → Hotspot mobile*.
 
@@ -185,14 +210,18 @@ Questa è la parte più delicata del programma.
   - rifiuto degli input non validi senza eseguire il comando;
   - propagazione del messaggio di errore dello script;
   - parsing di `ListSources` (incluse righe vuote e `\r\n`);
-  - parsing di `parseStatus`.
+  - parsing di `parseStatus`;
+  - logica del runner con hotspot finto: attesa della fonte, riavvio se già acceso, tentativi di avvio, arresto allo stop;
+  - generazione XML dell'attività (UTF-16 con BOM) e round-trip degli argomenti (spazi, virgolette, barre finali);
+  - mutex di istanza unica.
 - Il file [model/win.go](../model/win.go) (enumerazione adattatori con `GetAdaptersAddresses`) non fa parte del flusso del CLI. Ha test propri (`model/win_test.go`).
 
 Verifica manuale eseguita **senza** privilegi di amministratore:
 
 - `ListSources` → `[Ethernet]`.
 - `GetHotspotStatus` → `IsRunning: false`.
-- Avvio reale dell'hotspot: **non ancora eseguito**.
+- Avvio automatico: `schtasks /run` riuscito, processo `wirouter-autostart` in esecuzione, nessun messaggio di errore (sorgente Ethernet).
+- Avvio reale dell'hotspot: il processo non ha segnalato errori, ma la presenza dell'hotspot non è stata ancora confermata con un dispositivo.
 
 Comando di verifica: `go test -count=1 ./...`.
 
@@ -204,6 +233,8 @@ Comando di verifica: `go test -count=1 ./...`.
 - Non mostra statistiche di traffico.
 - Non ha interfaccia grafica né API web.
 - Non ripristina lo stato dopo un crash.
+- Non ha fallback sul Wi-Fi quando la LAN non è disponibile (previsto, in attesa di decisione).
+- Non salva una configurazione: i dati dell'avvio automatico si reinseriscono con `--install-autostart`.
 
 ---
 
@@ -221,3 +252,7 @@ Comando di verifica: `go test -count=1 ./...`.
 | 8 | Non è chiaro se Windows conservi SSID e password dopo lo stop | Da verificare in *Impostazioni → Hotspot mobile* |
 | 9 | Nessun ripristino dopo crash o chiusura della finestra | Salvare lo stato su file e ripristinarlo all'avvio |
 | 10 | I messaggi di `AggregateException` sono generici | Estrarre `InnerException.Message` |
+| 11 | La password è in chiaro nella definizione dell'attività (leggibile con `schtasks /query /xml`) e nella riga di comando del processo | Protezione con DPAPI, bloccata dalla policy aziendale (`internal/secret` escluso). Rischio accettato dall'utente |
+| 12 | Nessun fallback Wi-Fi quando la LAN non è disponibile | Decidere il tempo di attesa della LAN e testare su un adattatore Wi-Fi compatibile |
+| 13 | Il tempo di attesa della fonte (5 minuti) è fisso | Renderlo configurabile, se serve |
+| 14 | Con l'istanza automatica attiva, il comando interattivo non può partire (mutex di sessione) | Aggiungere un comando di arresto o un evento |

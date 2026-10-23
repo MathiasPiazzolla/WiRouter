@@ -1,5 +1,7 @@
 # WiRouter - Progresso da Status.md ad Oggi
 
+> **Documento storico** (agosto 2026). Non è più aggiornato. Lo stato attuale è in [IMPLEMENTATION_PLAN.md](./IMPLEMENTATION_PLAN.md) e la logica del programma in [LOGICA_PROGRAMMA.md](./LOGICA_PROGRAMMA.md).
+
 ## Sommario Progressi
 
 Dal precedente documento `status.md`, il progetto ha fatto significativi passi avanti nella realizzazione della struttura di base.

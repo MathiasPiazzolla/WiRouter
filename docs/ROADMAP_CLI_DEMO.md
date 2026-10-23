@@ -12,10 +12,17 @@ L'hotspot è gestito dall'API WinRT `Windows.Networking.NetworkOperators.Network
 
 ```
 WiRouter/
-├── cmd/wirouter/main.go        ← CLI interattiva
+├── cmd/wirouter/
+│   ├── main.go                 ← CLI interattiva e modalità --autostart
+│   └── main_test.go
 ├── internal/hotspot/
 │   ├── hotspot.go              ← API Go (validazione, start/stop/status)
-│   └── script.go               ← Script PowerShell/WinRT
+│   ├── script.go               ← Script PowerShell/WinRT
+│   └── controller.go           ← Adattatore per il runner
+├── internal/runner/runner.go   ← Ciclo della modalità automatica
+├── internal/autostart/task.go  ← Attività di pianificazione (login)
+├── internal/instance/          ← Istanza unica (mutex)
+├── internal/notify/            ← Finestra di errore (senza console)
 ├── model/
 │   ├── adapter.go              ← Struct dati
 │   ├── hotspot.go              ← HotspotConfig / HotspotStatus
@@ -25,7 +32,7 @@ WiRouter/
 ```
 
 - [x] Creare `cmd/wirouter/` e `internal/hotspot/`
-- [x] `bufio.Reader` per stdin, nessun argomento da linea di comando
+- [x] `bufio.Reader` per stdin; flag `--autostart`, `--install-autostart`, `--uninstall-autostart` (il flusso interattivo non ne richiede nessuno)
 - [x] Error handling con messaggi chiari
 
 ---
@@ -74,9 +81,12 @@ WiRouter/
 - [x] Input solo via ambiente, mai nello script
 - [x] Parsing stato e connessioni
 - [x] Propagazione dei messaggi d'errore dello script
+- [x] Runner della modalità automatica con hotspot finto (attesa fonte, riavvio, tentativi, arresto)
+- [x] Round-trip degli argomenti dell'attività e XML (UTF-16 con BOM)
+- [x] Istanza unica (mutex)
 
 ### 4.2 Test manuale
-- [ ] `go build -o wirouter.exe ./cmd/wirouter`
+- [x] `go build -o wirouter.exe ./cmd/wirouter` (e `wirouter-autostart.exe` con `-H=windowsgui`)
 - [ ] Eseguire da PowerShell come utente standard
 - [ ] Verificare che l'hotspot appaia in Windows
 - [ ] Connettere uno smartphone
@@ -87,6 +97,13 @@ WiRouter/
 - [ ] Nessuna connessione Internet
 - [ ] Hotspot bloccato da policy
 - [ ] Adapter Wi-Fi assente o non compatibile
+
+### 4.4 Avvio automatico al login
+Dettagli in [IMPLEMENTATION_PLAN.md](./IMPLEMENTATION_PLAN.md), Fase 4.
+- [x] Attività `WiRouter` creata e verificata con `schtasks /query`
+- [x] `schtasks /run` avvia il processo
+- [ ] Login reale, logout, riavvio dopo errore, LAN scollegata (5 minuti, poi finestra di errore)
+- [ ] Disattivazione verificata (vedi [DISATTIVARE_AVVIO_AUTOMATICO.md](./DISATTIVARE_AVVIO_AUTOMATICO.md))
 
 ---
 
